@@ -131,6 +131,8 @@ for i in range(0, s):
     final_key_Alice = np.append(final_key_Alice, parity_Alice)
     final_key_Bob = np.append(final_key_Bob, parity_Bob)
 
+final_key_Alice = final_key_Alice[0: 128]
+final_key_Bob = final_key_Bob[0: 128]
 
 #Quantum Key Distribution is complete
 print("Quantum Key Distribution is complete")    
