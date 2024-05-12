@@ -34,7 +34,6 @@ while initiate_QKD == 1:
         if Bob_bases == 1:
             qc.h(0)
         qc.measure(0, 0)
-        Bob_bits = np.append(cr)
 
         #Quantum Communication Channel Noise Model
         noise_model = NoiseModel()
@@ -48,6 +47,10 @@ while initiate_QKD == 1:
         RunCircuit = transpile(qc, backend)
 
         result = backend.run(qc).result()
+
+        #Appending the measured qubit to Bob's bits
+        measured = int(list(result.get_counts(qc).keys())[0])
+        Bob_bits.append(measured)
 
     #Now, all the communication throughh the Quantum Communication Channel is complete, all communication will happen through a public authenticated channel now
     #Now Alice and bob will compare the bases they used to prepare/measure the qubits
@@ -85,7 +88,7 @@ while initiate_QKD == 1:
 
 #Information Reconciliation
 
-Block_length = 1/(2*error_rate)
+Block_length = 1/(error_rate)
 number_Blocks = rawKey_length // Block_length
 Alice_blocks = np.array_split(Alice_bits, number_Blocks)
 Bob_blocks = np.array_split(Bob_bits, number_Blocks)
