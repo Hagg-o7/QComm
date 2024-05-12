@@ -143,13 +143,3 @@ print("Final Key Length: ", len(final_key_Alice))
 print("Final Key Alice: ", final_key_Alice)
 print("Final Key Bob: ", final_key_Bob)
 
-
-
-
-
-
-
-        
-
-
-    
