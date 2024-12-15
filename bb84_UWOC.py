@@ -1,4 +1,5 @@
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+import math
 import numpy as np
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, amplitude_damping_error, phase_damping_error
@@ -9,56 +10,82 @@ import sys
 import io
 from tqdm import tqdm
 
-ampDamp_param = 0.0001
-phaseDamp_param = 0.0001
+# Channel parameters
+w1 = 0.5117
+lambda_c1 = 0.1602
+a_u1 = 1.4175
+b_u1 = 2.9963
+c_u1 = 0.8444
+iter = 100
+x_u = np.linspace(0.0001, 10, iter)  # Distance range
+f_egg1 = (w1 / lambda_c1 * np.exp(-x_u / lambda_c1)) + ((1 - w1) * c_u1 * (x_u ** (a_u1 * c_u1 - 1)) /
+              (b_u1 ** (a_u1 * c_u1)) * np.exp(-(x_u / b_u1) ** c_u1) / math.gamma(a_u1))
 
+# Function to simulate underwater channel attenuation
+def apply_attenuation(distance, attenuation_coeff):
+    return np.exp(-attenuation_coeff * distance)
+
+# Function to simulate EGG turbulence as a noise factor
+def apply_turbulence(distance):
+    # Here, f_egg1 is a function that gives turbulence effect based on distance
+    turbulence_factor = np.interp(distance, x_u, f_egg1) 
+    return turbulence_factor
+
+ampDamp_param = 0.0001  # Amplitude damping parameter
+phaseDamp_param = 0.0001  # Phase damping parameter
 
 initiate_QKD = 1
 
 while initiate_QKD == 1:
-    n=2048 #Length of initial raw key
+    n = 2048  # Length of initial raw key
     Alice_bits, Alice_bases = Alice.Alice(n)
     Bob_bits, Bob_bases = Bob.Bob(n)
 
     old_stderr = sys.stderr
     sys.stderr = io.StringIO()
+
     try:
         for i in tqdm(range(n), desc="Transmitting raw key", unit="qubits", file=sys.stdout):
             qr = QuantumRegister(1)
             cr = ClassicalRegister(1)
-            qc = QuantumCircuit(qr, cr) #Defining the quantum communication circuit
-            #Alice(sender) qubit preparation stage
+            qc = QuantumCircuit(qr, cr)  # Defining the quantum communication circuit
+
+            # Alice (sender) qubit preparation stage
             if Alice_bits[i] == 1:
                 qc.x(0)
             if Alice_bases[i] == 1:
                 qc.h(0)
 
-            qc.id(0) #Noisy Quantum Communication Channel
+            # Apply attenuation and turbulence for the communication channel
+            distance = random.uniform(0, 10)  # Assume a random distance for simulation
+            attenuation_factor = apply_attenuation(distance, lambda_c1)  # Apply attenuation
+            turbulence_factor = apply_turbulence(distance)  # Apply turbulence (EGG noise)
 
-            #Bob(reciever) qubit measurement stage
-            if Bob_bases[i] == 1:
-                qc.h(0)
-            qc.measure(0, 0)
-
-            #Quantum Communication Channel Noise Model
+            # Modify the noise model based on channel effects
             noise_model = NoiseModel()
-            ampDamp_error = amplitude_damping_error(ampDamp_param)
-            phaseDamp_error = phase_damping_error(phaseDamp_param)
+            ampDamp_error = amplitude_damping_error(ampDamp_param * attenuation_factor)
+            phaseDamp_error = phase_damping_error(phaseDamp_param * turbulence_factor)
             noise_model.add_all_qubit_quantum_error(ampDamp_error, "id")
             noise_model.add_all_qubit_quantum_error(phaseDamp_error, "id")
 
-            #Simulating the quantum communication circuit
+            # Add a measurement operation to the circuit
+            qc.measure(qr, cr)
+
+            # Simulating the quantum communication circuit
             backend = AerSimulator(noise_model=noise_model)
 
-
+            # Run the circuit directly
             result = backend.run(qc).result()
 
-            #Appending the measured qubit to Bob's bits
-            measured = int(list(result.get_counts(qc).keys())[0])
-            Bob_bits = np.append(Bob_bits, measured)
-        pass
+            # Ensure results contain counts
+            counts = result.get_counts(qc)
+            if counts:
+                measured = int(list(counts.keys())[0], 2)  # Convert binary string to integer
+                Bob_bits = np.append(Bob_bits, measured)
+
     finally:
         sys.stderr = old_stderr
+
     #Now, all the communication throughh the Quantum Communication Channel is complete, all communication will happen through a public authenticated channel now
     #Now Alice and bob will compare the bases they used to prepare/measure the qubits
     #And then they will delete the bits where they used different bases
