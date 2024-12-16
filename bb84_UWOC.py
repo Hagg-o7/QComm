@@ -34,6 +34,15 @@ def apply_turbulence(distance):
 ampDamp_param = 0.0001  # Amplitude damping parameter
 phaseDamp_param = 0.0001  # Phase damping parameter
 
+# Apply attenuation and turbulence for the communication channel
+distance = random.uniform(0, 10)  # Assume a random distance for simulation
+attenuation_factor = apply_attenuation(distance, lambda_c1)  # Apply attenuation
+turbulence_factor = apply_turbulence(distance)  # Apply turbulence (EGG noise)
+
+print("Distance: ", distance)
+print("Attenuation factor: ", attenuation_factor)
+print("Turbulence factor: ", turbulence_factor)
+
 initiate_QKD = 1
 
 while initiate_QKD == 1:
@@ -55,11 +64,6 @@ while initiate_QKD == 1:
                 qc.x(0)
             if Alice_bases[i] == 1:
                 qc.h(0)
-
-            # Apply attenuation and turbulence for the communication channel
-            distance = random.uniform(0, 10)  # Assume a random distance for simulation
-            attenuation_factor = apply_attenuation(distance, lambda_c1)  # Apply attenuation
-            turbulence_factor = apply_turbulence(distance)  # Apply turbulence (EGG noise)
 
             # Modify the noise model based on channel effects
             noise_model = NoiseModel()
@@ -112,7 +116,7 @@ while initiate_QKD == 1:
     error_rate = erroneus_bits / Subset_length
 
 
-
+    initiate_QKD = 0
     print("Error Rate: ", error_rate)
     if error_rate < 0.11:
         print("The Quantum Key Distribution was successful")
